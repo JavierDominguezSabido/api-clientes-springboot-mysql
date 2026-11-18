@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
         Map<String, Object> respuesta = new HashMap<>();
         respuesta.put("fecha", LocalDateTime.now());
         respuesta.put("estado", 400);
-        respuesta.put("error", "Error de validacion");
+        respuesta.put("error", "Error de validación");
         respuesta.put("campos", errores);
 
         return ResponseEntity.badRequest().body(respuesta);

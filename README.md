@@ -1,5 +1,11 @@
 # API REST de Clientes con Spring Boot y MySQL
 
+[![CI](https://github.com/JavierDominguezSabido/api-clientes-springboot-mysql/actions/workflows/ci.yml/badge.svg)](https://github.com/JavierDominguezSabido/api-clientes-springboot-mysql/actions/workflows/ci.yml)
+![Java 21](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot 4](https://img.shields.io/badge/Spring%20Boot-4-6DB33F?logo=springboot&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.4-4479A1?logo=mysql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
+
 API REST backend desarrollada en Java con Spring Boot para la gestión de clientes.  
 El proyecto permite realizar operaciones CRUD, validar datos, gestionar errores personalizados y almacenar la información en una base de datos MySQL.
 
@@ -16,6 +22,10 @@ Este proyecto forma parte de mi portfolio como **Desarrollador Java Junior / Bac
 - MySQL
 - Maven
 - Jakarta Validation
+- JUnit 5, Mockito y MockMvc (tests)
+- H2 en memoria (tests de repositorio)
+- Docker y Docker Compose
+- GitHub Actions (integración continua)
 - Postman
 - Git y GitHub
 
@@ -31,7 +41,9 @@ Este proyecto forma parte de mi portfolio como **Desarrollador Java Junior / Bac
 - Buscar clientes por nombre.
 - Validar campos obligatorios.
 - Validar formato de email.
-- Gestionar errores personalizados.
+- Gestionar errores personalizados (404, 400 y 409).
+- Impedir emails repetidos: devuelve `409 Conflict` en lugar de un error 500.
+- Devolver `201 Created` al crear un cliente.
 - Separar entidad y DTOs para una estructura más limpia.
 
 ---
@@ -124,26 +136,15 @@ COLLATE utf8mb4_unicode_ci;
 
 ## Configuración del proyecto
 
-Configurar el archivo `src/main/resources/application.properties`:
+La conexión se configura con variables de entorno, así que no hay contraseñas escritas en el código:
 
-```properties
-spring.application.name=api-clientes-springboot-mysql
-
-spring.datasource.url=jdbc:mysql://localhost:3306/api_clientes_db?useSSL=false&serverTimezone=Europe/Madrid&allowPublicKeyRetrieval=true
-spring.datasource.username=root
-spring.datasource.password=TU_PASSWORD
-
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
-spring.jpa.open-in-view=false
-
-server.port=8080
-```
-
-> Sustituir `TU_PASSWORD` por la contraseña local de MySQL.
+| Variable | Por defecto | Descripción |
+|---|---|---|
+| `DB_URL` | `jdbc:mysql://localhost:3306/api_clientes_db?...` | URL de conexión a MySQL |
+| `DB_USERNAME` | `root` | Usuario de la base de datos |
+| `DB_PASSWORD` | *(vacía)* | Contraseña de la base de datos |
+| `SHOW_SQL` | `false` | Mostrar las consultas SQL en el log |
+| `PORT` | `8080` | Puerto de la API |
 
 ---
 
@@ -181,7 +182,7 @@ Body JSON:
 }
 ```
 
-Respuesta esperada:
+Respuesta esperada (`201 Created`):
 
 ```json
 {
@@ -191,6 +192,17 @@ Respuesta esperada:
   "email": "javier@email.com",
   "telefono": "600123456",
   "fechaRegistro": "2026-07-01T19:30:00"
+}
+```
+
+Si ya existe un cliente con ese email, la API responde `409 Conflict`:
+
+```json
+{
+  "fecha": "2026-07-01T19:30:00",
+  "estado": 409,
+  "error": "Email duplicado",
+  "mensaje": "Ya existe un cliente con el email: javier@email.com"
 }
 ```
 
@@ -367,13 +379,27 @@ Respuesta esperada:
   "fecha": "2026-07-01T19:30:00",
   "estado": 404,
   "error": "Cliente no encontrado",
-  "mensaje": "Cliente no encontrado con ID: 999"
+  "mensaje": "Cliente no encontrado con id: 999"
 }
 ```
 
 ---
 
-## Cómo ejecutar el proyecto
+## Ejecutar con Docker (recomendado)
+
+Levanta MySQL y la API con un solo comando, sin instalar nada más que Docker:
+
+```bash
+git clone https://github.com/JavierDominguezSabido/api-clientes-springboot-mysql.git
+cd api-clientes-springboot-mysql
+docker compose up --build
+```
+
+La API queda disponible en `http://localhost:8080/api/clientes`. La contraseña de MySQL se puede cambiar con la variable `DB_PASSWORD`.
+
+---
+
+## Cómo ejecutar el proyecto sin Docker
 
 1. Clonar el repositorio:
 
@@ -395,7 +421,7 @@ CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 ```
 
-4. Configurar usuario y contraseña en `application.properties`.
+4. Definir `DB_USERNAME` y `DB_PASSWORD` con los datos de tu MySQL (o usar los valores por defecto).
 
 5. Ejecutar el proyecto:
 
@@ -419,23 +445,23 @@ http://localhost:8080/api/clientes
 
 ---
 
-## Pruebas con Postman
+## Tests automáticos
 
-El proyecto ha sido probado con Postman utilizando los métodos:
+El proyecto tiene 18 tests que se ejecutan en cada push con GitHub Actions:
 
-- GET
-- POST
-- PUT
-- DELETE
+| Capa | Tipo de test | Qué comprueba |
+|---|---|---|
+| Servicio | Unitario (JUnit 5 + Mockito) | Lógica de negocio: alta, actualización, borrado, emails duplicados y clientes inexistentes |
+| Controlador | `@WebMvcTest` + MockMvc | Códigos HTTP (200, 201, 204, 400, 404, 409) y formato de las respuestas JSON |
+| Repositorio | `@DataJpaTest` con H2 | Consultas derivadas, unicidad de email y fecha de registro automática |
 
-Capturas recomendadas para documentar el proyecto:
+Para ejecutarlos en local:
 
-- Listado de clientes.
-- Creación de cliente.
-- Actualización de cliente.
-- Eliminación de cliente.
-- Error de validación.
-- Error de cliente no encontrado.
+```bash
+./mvnw verify
+```
+
+Además, los endpoints se han probado manualmente con Postman.
 
 ---
 
@@ -452,6 +478,9 @@ Con este proyecto he practicado:
 - Validación de datos con Jakarta Validation.
 - Uso de DTOs para entrada y salida de datos.
 - Gestión de excepciones personalizadas.
+- Tests unitarios, de controlador y de repositorio.
+- Contenerización con Docker y Docker Compose.
+- Integración continua con GitHub Actions.
 - Pruebas de endpoints con Postman.
 - Organización de un proyecto backend para GitHub.
 
@@ -461,11 +490,9 @@ Con este proyecto he practicado:
 
 - Añadir búsqueda por email.
 - Añadir paginación y ordenación.
-- Añadir tests unitarios.
 - Añadir Swagger/OpenAPI.
 - Añadir Spring Security.
 - Añadir autenticación con JWT.
-- Añadir Docker.
 - Crear un frontend con Angular o React.
 
 ---
