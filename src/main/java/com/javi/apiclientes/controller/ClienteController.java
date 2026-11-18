@@ -3,9 +3,9 @@ package com.javi.apiclientes.controller;
 
 import com.javi.apiclientes.dto.ClienteRequestDTO;
 import com.javi.apiclientes.dto.ClienteResponseDTO;
-import com.javi.apiclientes.entity.Cliente;
 import com.javi.apiclientes.service.ClienteService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,8 +32,9 @@ public class ClienteController {
     }
 
     @PostMapping
-    public ClienteResponseDTO crearCliente(@Valid @RequestBody ClienteRequestDTO clienteRequestDTO) {
-        return clienteService.crearCliente(clienteRequestDTO);
+    public ResponseEntity<ClienteResponseDTO> crearCliente(@Valid @RequestBody ClienteRequestDTO clienteRequestDTO) {
+        ClienteResponseDTO clienteCreado = clienteService.crearCliente(clienteRequestDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(clienteCreado);
     }
 
     @PutMapping("/{id}")

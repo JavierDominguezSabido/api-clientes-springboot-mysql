@@ -19,9 +19,20 @@ public class GlobalExceptionHandler {
         respuesta.put("fecha", LocalDateTime.now());
         respuesta.put("estado", 404);
         respuesta.put("error", "Cliente no encontrado");
-        respuesta.put("mensage", ex.getMessage());
+        respuesta.put("mensaje", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(respuesta);
+    }
+
+    @ExceptionHandler(EmailDuplicadoException.class)
+    public ResponseEntity<Map<String, Object>> manejarEmailDuplicado(EmailDuplicadoException ex){
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("fecha", LocalDateTime.now());
+        respuesta.put("estado", 409);
+        respuesta.put("error", "Email duplicado");
+        respuesta.put("mensaje", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(respuesta);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
